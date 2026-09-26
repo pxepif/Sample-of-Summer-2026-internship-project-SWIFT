@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Rensselaer Air | Fleet Maintenance &amp; Avionics Dashboard</title>
+
+<style>
+:root{
+    --critical:#dc2626;
+    --high:#d97706;
+    --medium:#2563eb;
+    --unknown:#6b7280;
+    --bg:#f5f7fb;
+    --card:#ffffff;
+    --border:#dbe3ee;
+    --text:#1f2937;
+}
+
+*{box-sizing:border-box}
+
+body{
+    margin:0;
+    font-family:"Segoe UI",Tahoma,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+}
+
+header{
+    background:#0f172a;
+    color:white;
+    padding:18px 22px;
+}
+
+h1{
+    margin:0;
+    font-size:28px;
+}
+
+.sub{
+    opacity:.85;
+    margin-top:6px;
+}
+
+.toolbar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+    padding:15px 20px;
+    background:white;
+    border-bottom:1px solid var(--border);
+}
+
+.toolbar input{
+    padding:10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    min-width:220px;
+}
+
+.legend-bar{
+    display:flex;
+    padding:10px 20px;
+    background:white;
+    border-bottom:1px solid var(--border);
+}
+
+button{
+    cursor:pointer;
+    border:none;
+    border-radius:8px;
+    padding:10px 14px;
+    background:#2563eb;
+    color:white;
+    font-weight:600;
+}
+
+button:hover{
+    opacity:.9;
+}
+
+.legend{
+    display:flex;
+    gap:15px;
+    flex-wrap:wrap;
+    align-items:center;
+}
+
+.legend-item{
+    display:flex;
+    align-items:flex-start; 
+    gap:6px;
+    font-size:14px;
+}
+
+.legend-sub{
+    font-size:11px;
+    color:#666;
+    font-weight:400;
+}
+
+.color-box{
+    width:16px;
+    height:16px;
+    border-radius:4px;
+}
+
+.source-files{
+    padding:8px 20px;
+    font-size:13px;
+    color:#555;
+    background:#eef2f7;
+    border-bottom:1px solid var(--border);
+} 
+
+.stats{
+    margin-left:auto;
+    font-size:14px;
+    font-weight:600;
+}
+
+.status{
+    padding:12px 20px;
+    font-weight:600;
+}
+
+.loading{color:#1d4ed8;}
+.error{color:#b91c1c;}
+.success{color:#15803d;}
+
+.dashboard{
+    padding:20px;
+}
+
+.columns{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+    gap:16px;
+}
+
+.assigned-card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    min-height:0px;
+}
+
+.assigned-header{
+    background:#e8eefc;
+    padding:12px;
+    font-weight:700;
+    border-bottom:1px solid var(--border);
+}
+
+.host{
+    border-bottom:1px solid #eef2f7;
+    padding:10px;
+}
+
+.host-title{
+    font-weight:700;
+    margin-bottom:8px;
+}
+
+.source-file{
+    border-bottom:1px solid #dbe3ec;
+    padding:8px 10px;
+}
+.source-file-title{
+    font-weight:700;
+    margin-bottom:6px;
+}
+
+.software-list{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+}
+
+.software{
+    padding:8px;
+    border-radius:8px;
+    background:#f8fafc;
+    border:1px solid #edf2f7;
+    cursor:pointer;
+    display:flex;
+    justify-content:space-between;
+}
+
+.software:hover{
+    background:#eef5ff;
+}
+
+.badge{
+    color:white;
+    padding:2px 8px;
+    border-radius:20px;
+    font-size:12px;
+}
+
+.modal{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.55);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:1000;
+}
+
+.modal-content{
+    background:white;
+    width:min(1000px,95vw);
+    max-height:90vh;
+    overflow:auto;
+    border-radius:14px;
+    padding:20px;
+}
+
+.modal-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:15px;
+}
+
+.record{
+    border-left:6px solid var(--unknown);
+    background:#fafafa;
+    padding:12px;
+    margin-bottom:10px;
+    border-radius:8px;
+}
+
+.record.critical{border-left-color:var(--critical);}
+.record.high{border-left-color:var(--high);}
+.record.medium{border-left-color:var(--medium);}
+.record.unknown{border-left-color:var(--unknown);}
+
+.record-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    gap:10px;
+}
+
+.small{
+    font-size:13px;
+    color:#555;
+}
+
+.empty{
+    text-align:center;
+    padding:30px;
+    color:#666;
+}
+
+.close-btn{
+    background:#dc2626;
+}
+
+@media(max-width:900px){
+    .stats{
+        width:100%;
+        margin-left:0;
+    }
+}
+
+
+body[data-theme="dark"] {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+}
+
+body[data-theme="dark"] .toolbar,
+body[data-theme="dark"] .modal-content {
+    background: var(--card);
+}
+
+body[data-theme="dark"] .legend-bar {
+    background: var(--card);
+}
+
+body[data-theme="dark"] .assigned-header {
+    background: #334155;
+}
+
+body[data-theme="dark"] .host {
+    border-bottom: 1px solid #334155;
+}
+
+body[data-theme="dark"] .software {
+    background: #1e293b;
+    border: 1px solid #334155;
+}
+
+body[data-theme="dark"] .software:hover {
+    background: #334155;
+}
+
+body[data-theme="dark"] .record {
+    background: #1e293b;
+}
+
+body[data-theme="dark"] .small,
+body[data-theme="dark"] .empty {
+    color: #94a3b8;
+}
+
+body[data-theme="dark"] input {
+    background: #1e293b;
+    color: var(--text);
+    border-color: var(--border);
+}
+
+
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>Rensselaer Air &mdash; Fleet Maintenance &amp; Avionics Dashboard</h1>
+    <div class="sub">Demo environment. All aircraft, personnel, and findings shown are fictional.</div>
+</header>
+
+<div class="toolbar">
+    <button id="themeToggle">Switch to dark</button>
+
+    <input id="hostFilter" placeholder="Filter Aircraft ID" list="hostOptions">
+    <datalist id="hostOptions"></datalist>
+    <input id="softwareFilter" placeholder="Filter Avionics System" list = "softwareOptions">
+    <datalist id="softwareOptions"></datalist>
+
+    <div class="stats" id="stats"></div>
+</div>
+
+<div class="legend-bar">
+    <div class="legend">
+        <div class="legend-item">
+            <span class="color-box" style="background:#dc2626"></span>
+            <div>
+                <strong>Red = Critical</strong>
+                <div class="legend-sub" id="legendCritical"></div>
+            </div>
+        </div>
+        <div class="legend-item">
+            <span class="color-box" style="background:#d97706"></span>
+            <div>
+                <strong>Amber = High</strong>
+                <div class="legend-sub" id="legendHigh"></div>
+            </div>
+        </div>
+        <div class="legend-item">
+            <span class="color-box" style="background:#2563eb"></span>
+            <div>
+                <strong>Blue = Medium</strong>
+                <div class="legend-sub" id="legendMedium"></div>
+            </div>
+        </div>
+        <div class="legend-item">
+            <span class="color-box" style="background:#6b7280"></span>
+            <div>
+                <strong>Gray = Unknown or Low priority</strong>
+                <div class="legend-sub">No usable date or 2027+</div>
+            </div>
+        </div>
+        <div class="legend-item">
+            <strong>Severity Rule: Maintenance Findings are colored by "Remediation Target Date". Avionics Inventory items are always shown and colored by "Created On".</strong>
+        </div>
+    </div>
+</div>
+
+<div id="status" class="status"></div>
+
+<div class="dashboard">
+    <div class="columns" id="columns"></div>
+</div>
+
+<div class="modal" id="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Details</h2>
+            <button class="close-btn" onclick="closeModal()">Close</button>
+        </div>
+        <div id="modalBody"></div>
+    </div>
+</div>
+<!--- Note: this is the one line that is different between combined_dashboard.html and dashboard.html.
+Placeholder replaced by the full JSON record set that generate_dashboard.py reads from the two
+Rensselaer Air demo CSVs. --->
+<script type="application/json" id="records-data">__EMBEDDED_RECORDS_PLACEHOLDER__</script>
+<script>
+/* ==========================
+   GLOBALS
+========================== */
+let allRecords = [];
+
+/* ==========================
+   HELPERS
+========================== */
+function setStatus(msg, type=""){
+    const el=document.getElementById("status");
+    el.className="status " + type;
+    el.textContent=msg;
+}
+
+function normalizeAssigned(v){
+    return (v && String(v).trim()) || "Unassigned";
+}
+
+function isFindingsSource(sourceFile){
+    return typeof sourceFile === "string" && sourceFile.toLowerCase().includes("findings");
+}
+
+function normalizeHost(r){
+    return r["Aircraft ID"] || "Aircraft ID not available";
+}
+
+function normalizeCreatedOn(r){
+    if (isFindingsSource(r.__sourceFile)){
+        return r["Maintenance Event"] || "Maintenance Event date not available";
+    }
+    return r["Created On"] || r["Created On Pivot"] || "Created On not available";
+}
+
+function normalizeSoftware(r){
+    return r["Avionics System"] || "Avionics System not available";
+}
+
+function normalizeUniqueId(r){
+    return r["Maintenance Event ID"] || "Maintenance Event ID not available";
+}
+
+function normalizeAssignmentGroup(r){
+    return r["Engineering Team"] || "No Engineering Team listed";
+}
+
+
+function parseDate(value){
+    if(value===null || value===undefined || value==="") return null;
+
+    if(typeof value==="number"){
+        const excelEpoch = new Date(Date.UTC(1899,11,30));
+        return new Date(excelEpoch.getTime() + value * 86400000);
+    }
+
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+function getRemediationDate(record){
+    return record["Remediation Target Date "] || record["Remediation Target Date"] || null;
+}
+
+function getCreatedOn(record){
+    return normalizeCreatedOn(record);
+}
+
+function getDateBoundaries(){
+    const now = new Date();
+ 
+    const currentWeekEnd = new Date(now);
+    currentWeekEnd.setDate(now.getDate() + (7 - now.getDay()));
+    currentWeekEnd.setHours(23,59,59,999);
+ 
+    const endNextMonth = new Date(
+        now.getFullYear(),
+        now.getMonth()+2,
+        0,
+        23,59,59,999
+    );
+ 
+    const endYear = new Date(
+        now.getFullYear(),
+        11,
+        31,
+        23,59,59,999
+    );
+ 
+    return { currentWeekEnd, endNextMonth, endYear };
+}
+ 
+function getLegendColor(dateValue){
+ 
+    const dt = parseDate(dateValue);
+    if(!dt) return "unknown";
+ 
+    const { currentWeekEnd, endNextMonth, endYear } = getDateBoundaries();
+ 
+    if(dt <= currentWeekEnd) return "critical";
+    if(dt > currentWeekEnd && dt <= endNextMonth) return "high";
+    if(dt > endNextMonth && dt <= endYear) return "medium";
+ 
+    return "unknown";
+}
+
+function mapLegendColor(color){
+    if (color === "critical") return 0;
+    if (color === "high") return 1;
+    if (color === "medium") return 2;
+    return 3;
+}
+ 
+function formatLegendDate(d){
+    return d.toLocaleDateString(undefined, { month:"short", day:"numeric", year:"numeric" });
+}
+ 
+function updateLegendDates(){
+    const { currentWeekEnd, endNextMonth, endYear } = getDateBoundaries();
+ 
+    document.getElementById("legendCritical").textContent =
+        `Through ${formatLegendDate(currentWeekEnd)} (this week) or earlier`;
+ 
+    document.getElementById("legendHigh").textContent =
+        `${formatLegendDate(currentWeekEnd)} – ${formatLegendDate(endNextMonth)}`;
+ 
+    document.getElementById("legendMedium").textContent =
+        `${formatLegendDate(endNextMonth)} – ${formatLegendDate(endYear)}`;
+}
+
+function badgeColor(color){
+    const byName =  {
+        critical:"#dc2626",
+        high:"#d97706",
+        medium:"#2563eb",
+        unknown:"#6b7280"
+    };
+    const byRank = ["#dc2626", "#d97706", "#2563eb", "#6b7280"];
+    if (typeof color === "number") return byRank[color];
+    return byName[color];
+}
+
+function recordKey(r){
+    // NOTE: __sourceFile is included in the key because both demo CSVs
+    // independently reuse the same "Maintenance Event ID" numbering per
+    // aircraft; without it, an Inventory record and a Findings record
+    // for the same aircraft/avionics system could incorrectly collapse
+    // into a single record.
+    return [
+        r.__sourceFile || "Unknown",
+        normalizeAssigned(r["Lead Engineer"]),
+        normalizeHost(r),
+        normalizeSoftware(r),
+        normalizeUniqueId(r)
+    ].join("|");
+}
+
+function validateRecord(record){
+    return (
+        ("Lead Engineer" in record) &&
+        ("Maintenance Event ID" in record)
+    );
+}
+
+/* ==========================
+   THEME TOGGLE code
+========================== */
+
+const themeToggle = document.getElementById('themeToggle');
+ 
+function applyTheme(theme) {
+    document.body.setAttribute('data-theme', theme);
+    try { localStorage.setItem('theme', theme); } catch (e) {}
+    if (themeToggle) {
+        themeToggle.textContent = theme === 'dark' ? 'Switch to light' : 'Switch to dark';
+    }
+}
+ 
+function loadTheme() {
+    let theme = 'light';
+    try {
+        const saved = localStorage.getItem('theme');
+        if (saved) theme = saved;
+        else if (window.matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark';
+    } catch (e) {
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark';
+    }
+    applyTheme(theme);
+}
+ 
+if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+        const current = document.body.getAttribute('data-theme') || 'light';
+        applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+}
+ 
+loadTheme();
+updateLegendDates();
+
+/* ==========================
+   DATA LOADING
+========================== */
+async function loadData(){
+
+    setStatus("Loading data...", "loading");
+
+    try{
+
+        const raw = document.getElementById("records-data").textContent;
+        const records = JSON.parse(raw);
+
+        const uniqueMap = new Map();
+
+        for(const r of records){
+            if(!validateRecord(r)) continue;
+            uniqueMap.set(recordKey(r), r);
+        }
+
+        allRecords = [...uniqueMap.values()];
+
+        setStatus(
+            `Loaded ${allRecords.length.toLocaleString()} unique records successfully.`,
+            "success"
+        );
+
+        populateDataLists(allRecords);
+
+        renderDashboard();
+    }
+    catch(err){
+
+        let message =
+            "Error loading embedded data. " +
+            err.message +
+            ". If you opened this HTML directly from the file system, browser security may block local scripts. " +
+            "Try serving the folder with a simple local web server.";
+
+        setStatus(message,"error");
+        document.getElementById("columns").innerHTML="";
+    }
+}
+
+/* ==========================
+   FILTERS
+========================== */
+function filterRecords(records){
+
+    const host = document.getElementById("hostFilter").value.toLowerCase();
+    const software = document.getElementById("softwareFilter").value.toLowerCase();
+
+    return records.filter(r=>{
+
+        const h = normalizeHost(r).toLowerCase();
+        const s = normalizeSoftware(r).toLowerCase();
+
+        return (
+            h.includes(host) &&
+            s.includes(software)
+        );
+    });
+}
+
+function populateDataLists(records){
+    const hostOptions = document.getElementById("hostOptions");
+    const softwareOptions = document.getElementById("softwareOptions");
+    
+    const hosts = [...new Set(records.map(r => normalizeHost(r)))].sort();
+    const softwares = [...new Set(records.map(r => normalizeSoftware(r)))].sort();
+    
+    hostOptions.innerHTML = hosts.map(h => `<option value="${h}"></option>`).join("");
+    softwareOptions.innerHTML = softwares.map(s => `<option value="${s}"></option>`).join("");
+}
+
+/* ==========================
+   RENDER
+========================== */
+
+const uiState = {
+    expandedAssigned: new Set(),
+    expandedSources: new Set(),
+    expandedHosts: new Set()
+};
+
+function toggleAssigned(assignedKey){
+    if(uiState.expandedAssigned.has(assignedKey)){
+        uiState.expandedAssigned.delete(assignedKey);
+    } else {
+        uiState.expandedAssigned.add(assignedKey);
+    }
+    renderDashboard();
+}
+ 
+function toggleSource(sourceKey){
+    if(uiState.expandedSources.has(sourceKey)){
+        uiState.expandedSources.delete(sourceKey);
+    } else {
+        uiState.expandedSources.add(sourceKey);
+    }
+    renderDashboard();
+}
+ 
+function toggleHost(hostKey){
+    if(uiState.expandedHosts.has(hostKey)){
+        uiState.expandedHosts.delete(hostKey);
+    } else {
+        uiState.expandedHosts.add(hostKey);
+    }
+    renderDashboard();
+}
+
+function renderDashboard(){
+
+    const filtered = filterRecords(allRecords);
+    const grouped = new Map();
+    const root = document.getElementById("columns");
+    let html = "";
+ 
+    for(const r of filtered){
+        const assigned = normalizeAssigned(r["Lead Engineer"]);
+        const sourceFile = r.__sourceFile || "Unknown";
+        const host = normalizeHost(r);
+        const software = normalizeSoftware(r);
+ 
+        if(!grouped.has(assigned)) grouped.set(assigned, new Map());
+        const sources = grouped.get(assigned);
+ 
+        if(!sources.has(sourceFile)) sources.set(sourceFile, new Map());
+        const hosts = sources.get(sourceFile);
+ 
+        if(!hosts.has(host)) hosts.set(host, new Map());
+        const softwareMap = hosts.get(host);
+ 
+        if(!softwareMap.has(software)) softwareMap.set(software, []);
+        softwareMap.get(software).push(r);
+    }
+ 
+    const assignedNames = Array.from(grouped.keys()).sort();
+ 
+    document.getElementById("stats").textContent =
+        `Records: ${filtered.length.toLocaleString()} | Lead Engineer Groups: ${assignedNames.length}`;
+ 
+    if(!assignedNames.length){
+        root.innerHTML =
+            '<div class="empty">No records match the current filters.</div>';
+        return;
+    }
+    
+
+    for(const assigned of assignedNames){
+
+        const sources = grouped.get(assigned);
+        const sourceNames = Array.from(sources.keys()).sort();
+
+        const assignedKey = assigned;
+        const assignedExpanded = uiState.expandedAssigned.has(assignedKey);
+
+        //Colorizes the outermost box.
+        let ownerColor = Infinity;
+        for (const [sourceFile, hostsMap] of sources) {
+            const useRemediationDate = isFindingsSource(sourceFile)
+            for (const softwareMap of hostsMap.values()){
+                for (const entries of softwareMap.values()){
+                        const severityDate = useRemediationDate 
+                        ? getRemediationDate(entries[0]) 
+                        : getCreatedOn(entries[0]);
+                        const color = getLegendColor(severityDate);
+                        const colorValue = mapLegendColor(color);
+                    if (colorValue < ownerColor) {
+                        ownerColor = colorValue;
+                    }
+                }
+            }
+        } //end for
+        const ownerColorValue = badgeColor(ownerColor);
+
+        html += `
+        <div class="assigned-card" style="border: 4px solid ${ownerColorValue}">
+            <div class="assigned-header" style="cursor:pointer" 
+            onclick="toggleAssigned('${assignedKey}')">
+                ${assignedExpanded ? '▼' : '▶'} ${assigned}
+                <div class="small">
+                    Categories: ${sourceNames.length}
+                </div>
+            </div>
+        `;
+        if (assignedExpanded){
+            for(const sourceFile of sourceNames){
+    
+                const hosts = sources.get(sourceFile);
+                const hostNames = Array.from(hosts.keys()).sort();
+                const sourceKey = `${assigned}::${sourceFile}`;
+                const sourceExpanded = uiState.expandedSources.has(sourceKey);
+
+                let sourceColor = Infinity;
+                const useRemediationDate = isFindingsSource(sourceFile);
+                for (const softwareMap of hosts.values()){
+                    for (const entries of softwareMap.values()){
+                        const severityDate = useRemediationDate
+                            ? getRemediationDate(entries[0])
+                            : getCreatedOn(entries[0]);
+                        const colorValue = mapLegendColor(getLegendColor(severityDate));
+                        if (colorValue < sourceColor) {
+                            sourceColor = colorValue;
+                        }
+                    }
+                }
+            
+                html += `
+                <div class="source-file" style="border:3px solid ${badgeColor(sourceColor)};">
+                    <div class="source-file-title"
+                        style="cursor:pointer"
+                        onclick='toggleSource(${JSON.stringify(sourceKey)})'>
+                        ${sourceExpanded ? "▼" : "▶"} ${sourceFile}
+                        <span class="small">
+                            (${hostNames.length} aircraft)
+                        </span>
+                    </div>
+                    <div class="host-list">
+                `;
+            
+                if(sourceExpanded){
+                    for(const host of hostNames){
+            
+                        const softwareMap = hosts.get(host);
+                        const softwareNames = Array.from(softwareMap.keys()).sort();
+                        const hostKey = `${sourceKey}::${host}`;
+                        const hostExpanded = uiState.expandedHosts.has(hostKey);
+            
+                        html += `
+                        <div class="host">
+                            <div class="host-title"
+                                style="cursor:pointer"
+                                onclick="toggleHost('${hostKey}')">
+                                ${hostExpanded ? "▼" : "▶"} ${host}
+                                <span class="small">
+                                    (${softwareNames.length} avionics systems)
+                                </span>
+                            </div>
+                            <div class="software-list">
+                            `;
+            
+                        if(hostExpanded){
+                            for(const software of softwareNames){
+            
+                                const entries = softwareMap.get(software);
+            
+                                let itemColorValue = Infinity;
+                                for (const record of entries) {
+                                    const severityDate = useRemediationDate
+                                        ? getRemediationDate(record)
+                                        : getCreatedOn(record);
+                                    const colorValue = mapLegendColor(getLegendColor(severityDate));
+                                    if (colorValue < itemColorValue) {
+                                        itemColorValue = colorValue;
+                                    }
+                                }
+            
+                                html += `
+                                <div class="software"
+                                    onclick='openModal(${JSON.stringify({
+                                        assigned,
+                                        sourceFile,
+                                        host,
+                                        software
+                                    })})'>
+                                    <span>${software}</span>
+                                    <span class="badge"
+                                        style="background:${badgeColor(itemColorValue)}">
+                                        ${entries.length}
+                                    </span>
+                                </div>`;
+                            }
+                        }
+    
+                        html += `</div></div>`;
+                    }
+                }
+        
+            html += `</div></div>`;
+            }
+        }
+        html += `</div>`;
+    }
+ 
+    root.innerHTML = html;
+    }
+
+/* ==========================
+   MODAL
+========================== */
+function openModal(keyObj){
+
+    const matches = allRecords.filter(r=>
+        normalizeAssigned(r["Lead Engineer"]) === keyObj.assigned &&
+        (r.__sourceFile || "Unknown") === keyObj.sourceFile &&
+        normalizeHost(r) === keyObj.host &&
+        normalizeSoftware(r) === keyObj.software
+    );
+
+    document.getElementById("modalTitle").textContent =
+        `${keyObj.assigned} → ${keyObj.host} → ${keyObj.software}`;
+
+    let html = "";
+
+    for(const record of matches){
+
+        const createdRaw = getCreatedOn(record);
+        const isFindings = isFindingsSource(record.__sourceFile);
+        const severityDate = isFindings
+            ? getRemediationDate(record)
+            : createdRaw
+        const category = getLegendColor(severityDate);
+
+        let findingDetail;
+        if (isFindings){
+            const finding = record["Maintenance Finding"] || "No finding description available";
+            const score = record["Maintenance Event 2"];
+            findingDetail = score ? `${finding} (Severity Score: ${score})` : finding;
+        } else {
+            findingDetail = record["Summary"] || "Not applicable";
+        }
+
+        html += `
+        <div class="record ${category}">
+            <div class="record-grid">
+                <div>
+                    <strong>Maintenance Event ID</strong><br>
+                    ${normalizeUniqueId(record)}
+                </div>
+ 
+                <div>
+                    <strong>Category</strong><br>
+                    ${category}
+                </div>
+        
+                <div>
+                    <strong>Created On</strong><br>
+                    ${createdRaw ?? "Created On not listed"}
+                </div>
+                
+
+                <div>
+                    <strong>Finding Detail</strong><br>
+                    ${findingDetail}
+                </div>
+
+                <div>
+                    <strong>Engineering Team</strong><br>
+                    ${normalizeAssignmentGroup(record)}
+                </div>
+        
+                <div>
+                    <strong>Remediation Target Date</strong><br>
+                    ${record["Remediation Target Date "] || record["Remediation Target Date"] || "Not applicable"}
+                </div>
+        
+            </div>
+        </div>`;
+    }
+
+    document.getElementById("modalBody").innerHTML = html;
+    document.getElementById("modal").style.display = "flex";
+}
+
+function closeModal(){
+    document.getElementById("modal").style.display = "none";
+}
+
+document.getElementById("modal")
+.addEventListener("click", e=>{
+    if(e.target.id==="modal"){
+        closeModal();
+    }
+});
+
+/* ==========================
+   EVENTS
+========================== */
+[
+    "hostFilter",
+    "softwareFilter",
+].forEach(id=>{
+    document.getElementById(id)
+    .addEventListener("input", renderDashboard);
+});
+
+/* ==========================
+   START
+========================== */
+loadData();
+</script>
+
+</body>
+</html>
