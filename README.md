@@ -2,7 +2,7 @@
 
 Self-contained HTML dashboard for grouping, filtering, and color-coding fleet maintenance findings and avionics inventory records by engineer, aircraft, and system.
 
-> **This is a fictional demo.** All aircraft IDs, engineer names, teams, and findings are synthetic and were generated for demonstration purposes only. It is a sanitized, fully independent clone of a real internal project — see `ANONYMIZATION_REPORT.md` for the full list of what was renamed, removed, and assumed.
+> **This is a fictional demo.** All aircraft IDs, engineer names, teams, and findings are synthetic and were generated for demonstration purposes only. It is a sanitized, fully independent clone of a real internal project.
 
 ---
 
@@ -43,7 +43,6 @@ Fake HTML/
 ├── combined_dashboard.html    # HTML/CSS/JS template (has the placeholder)
 ├── dashboard.html             # generated, ready-to-view output
 ├── README.md
-└── ANONYMIZATION_REPORT.md
 ```
 
 - **`generate_dashboard.py`** — discovers the CSVs in `data/`, loads and normalizes records, backfills a missing field (see Data Dictionary), deduplicates, and writes the final HTML by replacing the placeholder in `combined_dashboard.html`.
@@ -121,7 +120,7 @@ Fleet avionics inventory feed — analogous to an out-of-support/inventory expor
 
 | Column used by dashboard | Meaning |
 |---|---|
-| `Lead Engineer` | Backfilled from the Findings file (see Assumption #1 in the Anonymization Report) |
+| `Lead Engineer` | Backfilled from the Findings file |
 | `Aircraft ID` | Aircraft tail/identifier |
 | `Avionics System` | Installed system name |
 | `Maintenance Event ID` | Unique identifier for the inventory record |
@@ -151,5 +150,3 @@ Same architecture as the original project this was cloned from:
 1. **Build-time embedding** — `generate_dashboard.py` reads CSVs, normalizes/joins/deduplicates records, serializes them to JSON, and substitutes that JSON into a `<script type="application/json">` tag inside the HTML template. No runtime fetch of data files.
 2. **Client-side rendering** — `combined_dashboard.html`'s JS re-validates/deduplicates the embedded JSON, groups it into a nested `Map` structure (Engineer → Source → Aircraft → System), and renders an expandable accordion, computing severity colors from parsed dates.
 3. **Self-contained artifact** — the final `dashboard.html` needs nothing else to run; it can be opened directly from disk in any modern browser.
-
-See `ANONYMIZATION_REPORT.md` for the mapping between this project's terminology and the original internal project's terminology, plus all assumptions made while adapting the logic to the fake datasets.
